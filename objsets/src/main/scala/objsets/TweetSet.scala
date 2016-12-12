@@ -207,10 +207,24 @@ object GoogleVsApple {
   val apple = List("ios", "iOS", "iphone", "iPhone", "ipad", "iPad")
 
   lazy val googleTweets: TweetSet = { 
-    new Empty
+    /* tranverse all tweets */
+    /* if tweet's text contains the string in the list, add it to return value */
+    def iter(list: List[String])(tw: Tweet): Boolean = {
+      if (list.isEmpty) false
+      else if (tw.text.contains(list.head)) true
+      else iter(list)(tw)
+    }
+    TweetReader.allTweets filter iter(google)
+
   }
+
   lazy val appleTweets: TweetSet = {
-    new Empty
+    def iter(list: List[String])(tw: Tweet): Boolean = {
+      if (list.isEmpty) false
+      else if (tw.text.contains(list.head)) true
+      else iter(list)(tw)
+    }
+    TweetReader.allTweets filter iter(apple)
   }
   
   /**
@@ -218,7 +232,7 @@ object GoogleVsApple {
    * sorted by the number of retweets.
    */
   lazy val trending: TweetList = {
-    Nil
+    (googleTweets union appleTweets).descendingByRetweet
   }
 }
 
