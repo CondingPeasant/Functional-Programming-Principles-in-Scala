@@ -68,6 +68,7 @@ abstract class TweetSet {
    */
   def mostRetweeted: Tweet
   
+  def findMostRetweeted(tweet: Tweet): Tweet
   /**
    * Returns a list containing all tweets of this set, sorted by retweet count
    * in descending order. In other words, the head of the resulting list should
@@ -125,6 +126,8 @@ class Empty extends TweetSet {
     throw new NoSuchElementException();
   }
 
+  def findMostRetweeted(tweet: Tweet): Tweet = tweet
+
   def descendingByRetweet: TweetList = {
     Nil
   }
@@ -149,6 +152,7 @@ class NonEmpty(elem: Tweet, left: TweetSet, right: TweetSet) extends TweetSet {
 
   def filterAcc(p: Tweet => Boolean, acc: TweetSet): TweetSet = {
     val ret = right.filterAcc(p, left.filterAcc(p, acc))
+
     if (!p(elem)) ret.remove(elem)
     else ret
   }
@@ -161,6 +165,7 @@ class NonEmpty(elem: Tweet, left: TweetSet, right: TweetSet) extends TweetSet {
         if (l.isEmpty) ts
         else iter(ts.incl(l.head), l.tail)
       }
+
       if (that.isEmpty) this
       else {
         val l = that.convertTreeToList(List())
@@ -169,7 +174,13 @@ class NonEmpty(elem: Tweet, left: TweetSet, right: TweetSet) extends TweetSet {
   }
 
   def mostRetweeted: Tweet = {
-    elem
+    val negtiveRetweet = new Tweet("", "", -1)
+    findMostRetweeted(negtiveRetweet)
+  }
+
+  def findMostRetweeted(tweet: Tweet): Tweet = {
+    if (elem.retweets > tweet.retweets) left.findMostRetweeted(right.findMostRetweeted(elem))
+    else left.findMostRetweeted(right.findMostRetweeted(tweet))
   }
 
   def descendingByRetweet: TweetList = {
@@ -223,10 +234,15 @@ object Nil extends TweetList {
   def head = throw new java.util.NoSuchElementException("head of EmptyList")
   def tail = throw new java.util.NoSuchElementException("tail of EmptyList")
   def isEmpty = true
+  override def toString:String = "[Nil]\n"
 }
 
 class Cons(val head: Tweet, val tail: TweetList) extends TweetList {
   def isEmpty = false
+  override def toString:String = {
+    head.toString + "\n" +
+    tail.toString
+  }
 }
 
 
