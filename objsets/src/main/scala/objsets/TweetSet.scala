@@ -42,9 +42,7 @@ abstract class TweetSet {
    * Question: Can we implment this method here, or should it remain abstract
    * and be implemented in the subclasses?
    */
-  def filter(p: Tweet => Boolean): TweetSet = {
-    filterAcc(p, this)
-  }
+  def filter(p: Tweet => Boolean): TweetSet = filterAcc(p, this)
   
   /**
    * This is a helper method for `filter` that propagetes the accumulated tweets.
@@ -107,12 +105,21 @@ abstract class TweetSet {
    * This method takes a function and applies it to every element in the set.
    */
   def foreach(f: Tweet => Unit): Unit
+
+  /**
+   * add "isEmpty" and "convertTreeToList" to improve the performance of "union"
+   */
+  def isEmpty(): Boolean
+
+  def convertTreeToList(acc: List[Tweet]): List[Tweet]
 }
 
 class Empty extends TweetSet {
   def filterAcc(p: Tweet => Boolean, acc: TweetSet): TweetSet = acc
 
-  def union(that: TweetSet): TweetSet = that
+  def union(that: TweetSet): TweetSet = {
+    that
+  }
   
   def mostRetweeted: Tweet = {
     throw new NoSuchElementException();
@@ -132,6 +139,10 @@ class Empty extends TweetSet {
   def remove(tweet: Tweet): TweetSet = this
 
   def foreach(f: Tweet => Unit): Unit = ()
+
+  def isEmpty(): Boolean = true
+
+  def convertTreeToList(acc: List[Tweet]): List[Tweet] = acc
 }
 
 class NonEmpty(elem: Tweet, left: TweetSet, right: TweetSet) extends TweetSet {
@@ -141,9 +152,20 @@ class NonEmpty(elem: Tweet, left: TweetSet, right: TweetSet) extends TweetSet {
     if (!p(elem)) ret.remove(elem)
     else ret
   }
-  
+
+  /**
+   * tail recursion
+   */
   def union(that: TweetSet): TweetSet = {
-      ((left union right) union that) incl elem
+      def iter(ts: TweetSet, l: List[Tweet]): TweetSet = {
+        if (l.isEmpty) ts
+        else iter(ts.incl(l.head), l.tail)
+      }
+      if (that.isEmpty) this
+      else {
+        val l = that.convertTreeToList(List())
+        iter(this, l)
+      }
   }
 
   def mostRetweeted: Tweet = {
@@ -178,6 +200,12 @@ class NonEmpty(elem: Tweet, left: TweetSet, right: TweetSet) extends TweetSet {
     left.foreach(f)
     right.foreach(f)
   }
+
+  def isEmpty(): Boolean = false
+
+  def convertTreeToList(acc: List[Tweet]): List[Tweet] = {
+    right.convertTreeToList(left.convertTreeToList(elem::acc))
+  }
 }
 
 trait TweetList {
@@ -205,26 +233,20 @@ class Cons(val head: Tweet, val tail: TweetList) extends TweetList {
 object GoogleVsApple {
   val google = List("android", "Android", "galaxy", "Galaxy", "nexus", "Nexus")
   val apple = List("ios", "iOS", "iphone", "iPhone", "ipad", "iPad")
+  private def listFilter(list: List[String])(tw: Tweet): Boolean = {
+    if (list.isEmpty) false
+    else if (tw.text.contains(list.head)) true
+    else listFilter(list.tail)(tw)
+  }
+  lazy private val rawData = TweetReader.allTweets
 
   lazy val googleTweets: TweetSet = { 
-    /* tranverse all tweets */
-    /* if tweet's text contains the string in the list, add it to return value */
-    def iter(list: List[String])(tw: Tweet): Boolean = {
-      if (list.isEmpty) false
-      else if (tw.text.contains(list.head)) true
-      else iter(list)(tw)
-    }
-    TweetReader.allTweets filter iter(google)
+    rawData filter listFilter(google)
 
   }
 
   lazy val appleTweets: TweetSet = {
-    def iter(list: List[String])(tw: Tweet): Boolean = {
-      if (list.isEmpty) false
-      else if (tw.text.contains(list.head)) true
-      else iter(list)(tw)
-    }
-    TweetReader.allTweets filter iter(apple)
+    rawData filter listFilter(apple)
   }
   
   /**
