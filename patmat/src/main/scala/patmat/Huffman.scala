@@ -138,12 +138,8 @@ object Huffman {
                 else trees.head :: merge(node, trees.tail)
     }
 
-    if (trees.length < 2) throw new Error("Length of trees is less than 2")
-    var firstNode = trees.head
-    var secondNode = trees.tail.head
-    var otherNodes = trees.tail.tail
-    var newNode = makeCodeTree(firstNode, secondNode)
-    merge(newNode, otherNodes)
+    if (trees.length < 2) trees
+    else merge(makeCodeTree(trees.head, trees.tail.head), trees.tail.tail)
   }
   
   /**
@@ -196,9 +192,7 @@ object Huffman {
     def iter(tree: CodeTree, bits: List[Bit], acc: List[Char]): List[Char] = bits match {
       case Nil => acc
       case _ => {
-        var newBits = getChar(tree, bits)._1
-        var char = getChar(tree, bits)._2
-        iter(tree, newBits, acc ::: List(char))
+        iter(tree, getChar(tree, bits)._1, acc ::: List(getChar(tree, bits)._2))
       }
     }
     
@@ -287,18 +281,7 @@ object Huffman {
    */
   def convert(tree: CodeTree): CodeTable = tree match {
     case Leaf(char, _) => List((char, Nil))
-    case Fork(left, right, _, _) => {
-      def addPrefix(table: CodeTable, prefix: Bit): CodeTable = {
-        def iter(table: CodeTable, prefix: Bit, acc: CodeTable): CodeTable = table match {
-          case Nil => acc
-          case _ => iter(table.tail, prefix, (table.head._1, prefix :: table.head._2) :: acc)
-        }
-        iter(table, prefix, Nil)
-      }
-
-      addPrefix(convert(left), 0) ::: addPrefix(convert(right), 1)
-    }
-
+    case Fork(left, right, _, _) => mergeCodeTables(convert(left), convert(right))
   }
   
   /**
@@ -306,7 +289,16 @@ object Huffman {
    * use it in the `convert` method above, this merge method might also do some transformations
    * on the two parameter code tables.
    */
-  def mergeCodeTables(a: CodeTable, b: CodeTable): CodeTable = ???
+  def mergeCodeTables(a: CodeTable, b: CodeTable): CodeTable = {
+    def addPrefix(table: CodeTable, prefix: Bit): CodeTable = {
+      def iter(table: CodeTable, prefix: Bit, acc: CodeTable): CodeTable = table match {
+        case Nil => acc
+        case _ => iter(table.tail, prefix, (table.head._1, prefix :: table.head._2) :: acc)
+      }
+      iter(table, prefix, Nil)
+    }
+    addPrefix(a, 0) ::: addPrefix(b, 1)
+  }
   
   /**
    * This function encodes `text` according to the code tree `tree`.
